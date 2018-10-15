@@ -7,6 +7,7 @@
 #include <geometry_msgs/TwistStamped.h>
 #include <gazebo_msgs/ModelStates.h>
 #include <gazebo_msgs/GetModelState.h>
+#include <std_msgs/Int32.h>
 #include <sensor_msgs/Image.h>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -41,7 +42,7 @@
 #define HEIGHT_H_O  24
 #define WIDTH_V_O   32
 
-#define D_SET       10
+#define D_SET       0.1
 
 #define INIT_P_X    0
 #define INIT_P_Y    0
@@ -77,7 +78,7 @@ using namespace std;
 // ---------------------- //
 
 unsigned char Img_data[O_WIDTH*O_HEIGHT*3];
-
+int count_loop;
 double pose_p_x_c = INIT_P_X;
 double pose_p_y_c = INIT_P_Y;
 double pose_p_z_c = INIT_P_Z;
@@ -185,19 +186,27 @@ void msgCallback_img(const sensor_msgs::Image::ConstPtr& Img){
     }
 }
 
+void msgCallback_int(const std_msgs::Int32::ConstPtr& num_c){
+	count_loop = num_c->data;
+}
+
+
 // ------------------- //
 // -- Main Function -- //
 // ------------------- //
 
 int main (int argc, char **argv){
     ros::init(argc, argv, "fwmav_of_sim");
-    ros::NodeHandle nh, nh_mavros, nh_image;
+    ros::NodeHandle nh, nh_mavros, nh_image, nh_c;
 
     ros::Publisher oa_of_pub = nh.advertise<fwmav_of_sim::MsgOAOF>("fwmav_of_sim_msg",100);
     ros::Publisher d_Position_pub = nh_mavros.advertise<geometry_msgs::PoseStamped>("fwmav/command/pose",100);
     ros::Publisher d_Velocity_pub = nh_mavros.advertise<geometry_msgs::TwistStamped>("fwmav/command/twist",100);
     //ros::Subscriber oa_of_sub_pos = nh_mavros.subscribe("gazebo/model_states", 10, msgCallback);
     ros::Subscriber oa_of_sub_image = nh_image.subscribe("fwmav/camera/image_raw", 10, msgCallback_img);
+    //ros::Subscriber oa_of_sub_image = nh_image.subscribe("fwmav/camera/image_raw", 10, msgCallback_img);
+    ros::Subscriber oa_of_sub_dir = nh_c.subscribe("num_c", 10, msgCallback_int);
+    //ros::Subscriber oa_of_sub_time = nh_dir.subscribe("/count_number", 10, msgCallback_int);
 
     ros::ServiceClient pose_client = nh.serviceClient<gazebo_msgs::GetModelState>("gazebo/get_model_state");
 
@@ -224,7 +233,7 @@ int main (int argc, char **argv){
     Mat mat_resized;
 
     char keypressed;
-
+    //int count_loop_s = 1;
     uchar arr_gray_prev[WIDTH][HEIGHT];
     uchar arr_gray_curr[WIDTH][HEIGHT];
 
@@ -359,6 +368,10 @@ int main (int argc, char **argv){
 
     double count = 0;
 	while (ros::ok()){
+	//count_loop_s = count_loop * 1;
+	//ROS_INFO("count_loop =  %d", count_loop);
+	if(count_loop == 0){
+	//ROS_INFO("okokokokokokokokok");
         if(pose_client.call(srv_pose)){
             pose_p_x_p = pose_p_x_c;
             pose_p_y_p = pose_p_y_c;
@@ -607,7 +620,7 @@ int main (int argc, char **argv){
 
             pose_o_qw_t = cy * cr * cp + sy * sr * sp;
             pose_o_qx_t = cy * sr * cp - sy * cr * sp;
-            pose_o_qy_t = cr * cr * sp + sy * sr * cp;
+            pose_o_qy_t = cy * cr * sp + sy * sr * cp;
             pose_o_qz_t = sy * cr * cp - cy * sr * sp;
         }
 
@@ -707,6 +720,21 @@ int main (int argc, char **argv){
         geometry_msgs::TwistStamped msg_d_velocity;
 
 		msg.data = count;
+		msg_setposition.pose.position.x = 1;
+		msg_setposition.pose.position.y = 0;
+		msg_setposition.pose.position.z = 1.5;
+		msg_setposition.pose.orientation.x = 0;
+		msg_setposition.pose.orientation.y = 0;
+		msg_setposition.pose.orientation.z = 0;
+		msg_setposition.pose.orientation.w = 1;
+        msg_d_velocity.twist.linear.x = 0.1;
+        msg_d_velocity.twist.linear.y = 0;
+        msg_d_velocity.twist.linear.z = 1.5;
+        msg_d_velocity.twist.angular.x = 0;
+        msg_d_velocity.twist.angular.y = 0;
+        msg_d_velocity.twist.angular.z = 0;
+
+/*
 		msg_setposition.pose.position.x = pose_p_x_t;
 		msg_setposition.pose.position.y = pose_p_y_t;
 		msg_setposition.pose.position.z = pose_p_z_t;
@@ -719,7 +747,7 @@ int main (int argc, char **argv){
         msg_d_velocity.twist.linear.z = d_vel_lz;
         msg_d_velocity.twist.angular.x = 0;
         msg_d_velocity.twist.angular.y = 0;
-        msg_d_velocity.twist.angular.z = d_vel_az;
+        msg_d_velocity.twist.angular.z = d_vel_az;*/
 
 		oa_of_pub.publish(msg);
 		d_Position_pub.publish(msg_setposition);
@@ -746,10 +774,12 @@ int main (int argc, char **argv){
 		ROS_INFO("ALT_CTRL_SAT = %f", alt_ctrl_sat_input);
 		ROS_INFO("-------------------------------");
 
+		count = count + S_TIME;
+	count_loop = 1;
+	}//if
         ros::spinOnce();
         loop_rate.sleep();
-		count = count + S_TIME;
-	}
+}//while
 
 	file_pose_data.close();
 	file_of_h_data.close();

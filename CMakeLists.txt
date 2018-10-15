@@ -19,3 +19,11 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 add_executable(fwmav_of_sim src/fwmav_of_sim.cpp)
 target_link_libraries(fwmav_of_sim ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_dependencies(fwmav_of_sim fwmav_of_sim_generate_messages_cpp)
+
+add_executable(fwmav_of_sim2 src/fwmav_of_sim2.cpp)
+target_link_libraries(fwmav_of_sim2 ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_dependencies(fwmav_of_sim2 fwmav_of_sim_generate_messages_cpp)
+
+add_executable(fwmav_sim_avc src/fwmav_sim_avc.cpp)
+target_link_libraries(fwmav_sim_avc ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_dependencies(fwmav_sim_avc fwmav_of_sim_generate_messages_cpp)
